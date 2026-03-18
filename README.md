@@ -134,13 +134,13 @@ Response:
 Hosted on Render:
 
 ```
-https://your-app.onrender.com
+https://restaurant-agent-ids2.onrender.com/
 ```
 
 ### API Docs
 
 ```
-https://your-app.onrender.com/docs
+https://restaurant-agent-ids2.onrender.com/docs
 ```
 
 ---
