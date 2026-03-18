@@ -28,37 +28,29 @@ class ReservationRequest(BaseModel):
     def parse_guests(cls, v):
         # remove quotes if any, then convert to int
         if isinstance(v, str):
-            v = v.replace('"', '')  # remove extra quotes
+            v = v.replace('"', '')
         return int(v)
-
 
 # ---- Helper function ----
 def is_time_available(date: str, time: str) -> bool:
-    """
-    Returns True if less than 2 bookings exist for a given date+time slot.
-    """
     count = sum(
         1 for r in reservations if r["date"] == date and r["time"].lower() == time.lower()
     )
     return count < 2
 
-
 # ---- API: Check availability ----
 @app.get("/availability/{date}/{time}")
 def check_availability(date: str, time: str):
     available = is_time_available(date, time)
-
     if not available:
         return {
             "available": False,
             "message": f"Sorry, {time} on {date} is fully booked."
         }
-
     return {
         "available": True,
         "message": f"{time} on {date} is available."
     }
-
 
 # ---- API: Create reservation ----
 @app.post("/reserve")
@@ -75,7 +67,6 @@ def create_reservation(request: ReservationRequest):
         "time": request.time,
         "guests": request.guests
     }
-
     reservations.append(reservation)
 
     return {
@@ -84,7 +75,6 @@ def create_reservation(request: ReservationRequest):
         "reservation": reservation
     }
 
-
 # ---- API: View all reservations ----
 @app.get("/reservations")
 def get_reservations():
@@ -92,7 +82,6 @@ def get_reservations():
         "total": len(reservations),
         "data": reservations
     }
-
 
 # ---- Root ----
 @app.get("/")
