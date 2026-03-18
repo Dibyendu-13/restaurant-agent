@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from fastapi.middleware.cors import CORSMiddleware
 
 
@@ -21,6 +21,11 @@ class ReservationRequest(BaseModel):
     date: str      # Format: YYYY-MM-DD
     time: str      # Format: HH:MM AM/PM
     guests: int
+
+    # Convert guests from string to int if Vapi sends it as string
+    @validator("guests", pre=True)
+    def parse_guests(cls, v):
+        return int(v)
 
 # ---- Helper function ----
 def is_time_available(date: str, time: str) -> bool:
