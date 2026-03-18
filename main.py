@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
+from datetime import datetime, timedelta
 
 app = FastAPI()
 
@@ -20,54 +21,64 @@ reservations: List[dict] = []
 # ---- Request model ----
 class ReservationRequest(BaseModel):
     name: str
-    date: str  # Format: YYYY-MM-DD
-    time: str  # Format: HH:MM AM/PM
-    guests: str  # Store guests as string
+    date: str  # format: YYYY-MM-DD
+    time: str  # format: HH:MM AM/PM UTC
+    guests: str  # store as string for Vapi
 
-# ---- Helper function ----
+# ---- Helper: UTC to IST conversion ----
+def utc_to_ist(utc_time_str: str) -> str:
+    try:
+        # Parse time assuming "HH:MM AM/PM" format in UTC
+        utc_time = datetime.strptime(utc_time_str.strip(), "%I:%M %p")
+        ist_time = utc_time + timedelta(hours=5, minutes=30)
+        return ist_time.strftime("%I:%M %p")
+    except Exception:
+        # fallback if format unexpected
+        return utc_time_str
+
+# ---- Helper function: check availability ----
 def is_time_available(date: str, time: str) -> bool:
-    """
-    Returns True if less than 2 bookings exist for a given date+time slot.
-    """
     count = sum(
         1 for r in reservations if r["date"] == date and r["time"].lower() == time.lower()
     )
-    return count < 2
+    return count < 2  # max 2 bookings per slot
 
 # ---- API: Check availability ----
 @app.get("/availability/{date}/{time}")
 def check_availability(date: str, time: str):
-    available = is_time_available(date, time)
+    ist_time = utc_to_ist(time)
+    available = is_time_available(date, ist_time)
     if not available:
         return {
             "available": False,
-            "message": f"Sorry, {time} on {date} is fully booked."
+            "message": f"Sorry, {ist_time} on {date} is fully booked."
         }
     return {
         "available": True,
-        "message": f"{time} on {date} is available."
+        "message": f"{ist_time} on {date} is available."
     }
 
 # ---- API: Create reservation ----
 @app.post("/reserve")
 def create_reservation(request: ReservationRequest):
-    if not is_time_available(request.date, request.time):
+    ist_time = utc_to_ist(request.time)
+    if not is_time_available(request.date, ist_time):
         return {
             "status": "failed",
-            "message": f"{request.time} on {request.date} is not available. Please choose another time."
+            "message": f"{ist_time} on {request.date} is not available. Please choose another time."
         }
 
     reservation = {
-        "name": request.name,
-        "date": request.date,
-        "time": request.time,
-        "guests": request.guests  # store as string
+        "name": request.name.strip(),
+        "date": request.date.strip(),
+        "time": ist_time,  # store as IST
+        "guests": request.guests.strip()
     }
     reservations.append(reservation)
 
     return {
         "status": "confirmed",
-        "message": f"Table booked for {request.guests} people at {request.time} on {request.date} under {request.name}",
+        "message": f"Table booked for {reservation['guests']} people at {ist_time} on {reservation['date']} under {reservation['name']}",
         "reservation": reservation
     }
 
