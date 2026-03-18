@@ -10,41 +10,44 @@ reservations = []
 # Request model
 class ReservationRequest(BaseModel):
     name: str
-    time: str
+    date: str      # Format: YYYY-MM-DD
+    time: str      # Format: HH:MM AM/PM
     guests: int
 
 # ---- Helper function ----
-def is_time_available(time: str) -> bool:
-    count = sum(1 for r in reservations if r["time"].lower() == time.lower())
-    return count < 2  # max 2 bookings per slot
+def is_time_available(date: str, time: str) -> bool:
+    # Max 2 bookings per date+time slot
+    count = sum(1 for r in reservations if r["date"] == date and r["time"].lower() == time.lower())
+    return count < 2
 
 # ---- API: Check availability ----
-@app.get("/availability/{time}")
-def check_availability(time: str):
-    available = is_time_available(time)
+@app.get("/availability/{date}/{time}")
+def check_availability(date: str, time: str):
+    available = is_time_available(date, time)
 
     if not available:
         return {
             "available": False,
-            "message": f"Sorry, {time} is fully booked."
+            "message": f"Sorry, {time} on {date} is fully booked."
         }
 
     return {
         "available": True,
-        "message": f"{time} is available."
+        "message": f"{time} on {date} is available."
     }
 
 # ---- API: Create reservation ----
 @app.post("/reserve")
 def create_reservation(request: ReservationRequest):
-    if not is_time_available(request.time):
+    if not is_time_available(request.date, request.time):
         return {
             "status": "failed",
-            "message": f"{request.time} is not available. Please choose another time."
+            "message": f"{request.time} on {request.date} is not available. Please choose another time."
         }
 
     reservation = {
         "name": request.name,
+        "date": request.date,
         "time": request.time,
         "guests": request.guests
     }
@@ -53,7 +56,7 @@ def create_reservation(request: ReservationRequest):
 
     return {
         "status": "confirmed",
-        "message": f"Table booked for {request.guests} people at {request.time} under {request.name}",
+        "message": f"Table booked for {request.guests} people at {request.time} on {request.date} under {request.name}",
         "reservation": reservation
     }
 
