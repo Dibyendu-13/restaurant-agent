@@ -1,21 +1,23 @@
 from fastapi import FastAPI
 from pydantic import BaseModel, validator
 from fastapi.middleware.cors import CORSMiddleware
-
+from typing import List
 
 app = FastAPI()
 
+# Allow Vapi and other origins to call your API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # allow all origins, or put Vapi domain here
+    allow_origins=["*"],  # replace "*" with Vapi domain in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-# In-memory storage
-reservations = []
 
-# Request model
+# ---- In-memory storage ----
+reservations: List[dict] = []
+
+# ---- Request model ----
 class ReservationRequest(BaseModel):
     name: str
     date: str      # Format: YYYY-MM-DD
@@ -25,13 +27,22 @@ class ReservationRequest(BaseModel):
     # Convert guests from string to int if Vapi sends it as string
     @validator("guests", pre=True)
     def parse_guests(cls, v):
-        return int(v)
+        try:
+            return int(v)
+        except ValueError:
+            raise ValueError("Invalid number of guests")
+
 
 # ---- Helper function ----
 def is_time_available(date: str, time: str) -> bool:
-    # Max 2 bookings per date+time slot
-    count = sum(1 for r in reservations if r["date"] == date and r["time"].lower() == time.lower())
+    """
+    Returns True if less than 2 bookings exist for a given date+time slot.
+    """
+    count = sum(
+        1 for r in reservations if r["date"] == date and r["time"].lower() == time.lower()
+    )
     return count < 2
+
 
 # ---- API: Check availability ----
 @app.get("/availability/{date}/{time}")
@@ -48,6 +59,7 @@ def check_availability(date: str, time: str):
         "available": True,
         "message": f"{time} on {date} is available."
     }
+
 
 # ---- API: Create reservation ----
 @app.post("/reserve")
@@ -73,6 +85,7 @@ def create_reservation(request: ReservationRequest):
         "reservation": reservation
     }
 
+
 # ---- API: View all reservations ----
 @app.get("/reservations")
 def get_reservations():
@@ -80,6 +93,7 @@ def get_reservations():
         "total": len(reservations),
         "data": reservations
     }
+
 
 # ---- Root ----
 @app.get("/")
