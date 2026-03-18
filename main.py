@@ -20,17 +20,16 @@ reservations: List[dict] = []
 # ---- Request model ----
 class ReservationRequest(BaseModel):
     name: str
-    date: str      # Format: YYYY-MM-DD
-    time: str      # Format: HH:MM AM/PM
+    date: str
+    time: str
     guests: int
 
-    # Convert guests from string to int if Vapi sends it as string
     @validator("guests", pre=True)
     def parse_guests(cls, v):
-        try:
-            return int(v)
-        except ValueError:
-            raise ValueError("Invalid number of guests")
+        # remove quotes if any, then convert to int
+        if isinstance(v, str):
+            v = v.replace('"', '')  # remove extra quotes
+        return int(v)
 
 
 # ---- Helper function ----
