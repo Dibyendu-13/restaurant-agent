@@ -1,8 +1,7 @@
 from fastapi import FastAPI
-from pydantic import BaseModel, validator
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
-from datetime import datetime
 
 app = FastAPI()
 
@@ -21,25 +20,9 @@ reservations: List[dict] = []
 # ---- Request model ----
 class ReservationRequest(BaseModel):
     name: str
-    date: str  # Expecting ISO format: YYYY-MM-DD
-    time: str
-    guests: int
-
-    @validator("guests", pre=True)
-    def parse_guests(cls, v):
-        # Convert guests from string to int if needed
-        if isinstance(v, str):
-            v = v.replace('"', '')  # remove any quotes
-        return int(v)
-
-    @validator("date")
-    def parse_date(cls, v):
-        # Ensure date is valid and in YYYY-MM-DD format
-        try:
-            dt = datetime.strptime(v, "%Y-%m-%d")
-            return dt.strftime("%Y-%m-%d")
-        except ValueError:
-            raise ValueError("Date must be in YYYY-MM-DD format")
+    date: str  # Format: YYYY-MM-DD
+    time: str  # Format: HH:MM AM/PM
+    guests: str  # Store guests as string
 
 # ---- Helper function ----
 def is_time_available(date: str, time: str) -> bool:
@@ -78,7 +61,7 @@ def create_reservation(request: ReservationRequest):
         "name": request.name,
         "date": request.date,
         "time": request.time,
-        "guests": request.guests
+        "guests": request.guests  # store as string
     }
     reservations.append(reservation)
 
